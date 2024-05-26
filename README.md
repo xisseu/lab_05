@@ -1,183 +1,202 @@
-## Laboratory work 3
+## Homework
 
-Представьте, что вы стажер в компании "Formatter Inc.".
-### Задание 1
-Вам поручили перейти на систему автоматизированной сборки **CMake**.
-Исходные файлы находятся в директории [formatter_lib](formatter_lib).
-В этой директории находятся файлы для статической библиотеки *formatter*.
-Создайте `CMakeList.txt` в директории [formatter_lib](formatter_lib),
-с помощью которого можно будет собирать статическую библиотеку *formatter*.
+1. Создайте модульные тесты на классы `Transaction` и `Account` и создайте файл `CMakeLists.txt` для библиотеки *banking* и для запуска тестов.
 
-```sh
-$ cd formatter_lib
-```
+ - `test_account.cpp`
+ 
+ ```sh
+ #include <gtest/gtest.h>
+#include "gmock/gmock.h"
 
-```sh
-$ cat >> CMakeLists.txt << EOF
-cmake_minimum_required(VERSION 3.4)
-project(formatter_lib)
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_library(formatter_lib STATIC ${CMAKE_CURRENT_SOURCE_DIR}/formatter.cpp)
-EOF
-```
+#include "Account.h"
 
-```sh
-$ cmake -B build
-```
+class MockAccount: public Account {
+public:
+  MockAccount(int id, int balance): Account(id, balance){}
+};
 
-```sh
-$ cmake --build build
-```
-
-### Задание 2
-У компании "Formatter Inc." есть перспективная библиотека,
-которая является расширением предыдущей библиотеки. Т.к. вы уже овладели
-навыком созданием `CMakeList.txt` для статической библиотеки *formatter*, ваш 
-руководитель поручает заняться созданием `CMakeList.txt` для библиотеки 
-*formatter_ex*, которая в свою очередь использует библиотеку *formatter*.
-
-```sh
-$ cat >> CMakeLists.txt << EOF
-> cmake_minimum_required(VERSION 3.4)
-> project(formatter_ex_lib)
-> set(CMAKE_CXX_STANDARD 11)
-> set(CMAKE_CXX_STANDARD_REQUIRED ON)
-> add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../formatter_lib formatter_lib_dir)
-> add_library(formatter_ex_lib STATIC ${CMAKE_CURRENT_SOURCE_DIR}/formatter_ex.cpp)
-> target_include_directories(formatter_ex_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../formatter_lib)
-> target_link_libraries(formatter_ex_lib formatter_lib)
-> EOF
-```
-
-```sh
-$ cmake -B build
-```
-
-```sh
-$ cmake --build build
-```
-
-### Задание 3
-Конечно же ваша компания предоставляет примеры использования своих библиотек.
-Чтобы продемонстрировать как работать с библиотекой *formatter_ex*,
-вам необходимо создать два `CMakeList.txt` для двух простых приложений:
-* *hello_world*, которое использует библиотеку *formatter_ex*;
-* *solver*, приложение которое испольует статические библиотеки *formatter_ex* и *solver_lib*.
-
-```sh
-$ cat >> CMakeLists.txt << EOF
-cmake_minimum_required(VERSION 3.4)
-project(hello_world)
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../formatter_ex_lib formatter_ex_lib_dir)
-add_executable(hello_world ${CMAKE_CURRENT_SOURCE_DIR}/hello_world.cpp)
-target_include_directories(hello_world PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../formatter_ex_lib)
-target_link_libraries(hello_world formatter_ex_lib)
-EOF
-```
-
-```sh
-$ cmake -B build
-```
-
-```sh
-$ cmake --build build
-```
-
-```sh
-$ build/hello_world
--------------------------
-hello, world!
--------------------------
-```
-
-`solver_lib/CMakeLists.txt`
-```sh
-$ cat >> CMakeLists.txt << EOF
-cmake_minimum_required(VERSION 3.4)
-project(solver_lib)
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_library(solver_lib STATIC ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp)
-EOF
-```
-
-```sh
-$ cmake -B build
-```
-
-```sh
-$ cmake --build build
-```
-
-Исправление ошибки:
-
-```sh
-$ vim solver.cpp
-```
-
-```sh
-#include "solver.h"
-
-#include <stdexcept>
-#include <cmath>
-
-void solve(float a, float b, float c, float& x1, float& x2)
-{
-    float d = (b * b) - (4 * a * c);
-
-    if (d < 0)
-    {
-        throw std::logic_error{"error: discriminant < 0"};
-    }
-
-    x1 = (-b - sqrtf(d)) / (2 * a);
-    x2 = (-b + sqrtf(d)) / (2 * a);
+TEST(Account, Init) {
+  MockAccount ac(1, 1000);
+  EXPECT_EQ(ac.Account::GetBalance(), 1000);
+  EXPECT_EQ(ac.Account::id(), 1);
 }
-```
 
-```sh
-$ cmake -B build
-$ cmake --build build
-```
+TEST(Account, ChangeBalance) {
+  MockAccount ac(1, 1000);
+  EXPECT_THROW(ac.Account::ChangeBalance(10), std::runtime_error);
+  ac.Account::Lock();
+  ac.Account::ChangeBalance(10);
+  EXPECT_EQ(ac.Account::GetBalance(), 1010);
+  ac.Account::ChangeBalance(-20);
+  EXPECT_EQ(ac.Account::GetBalance(), 990);
+  ac.Account::Unlock();
+  EXPECT_THROW(ac.Account::ChangeBalance(20), std::runtime_error);
+}
 
-`solver_application/CMakeLists.txt`:
-```sh
-cat >> CMakeLists.txt << EOF
+TEST(Account, Lock) {
+  MockAccount ac(1, 1000);
+  ac.Account::Unlock();
+  ac.Account::Lock();
+  EXPECT_THROW(ac.Account::Lock(), std::runtime_error);
+}
+ ```
+ - `test_transaction.cpp`
+ 
+ ```sh
+ #include <gtest/gtest.h>
+#include <gmock/gmock.h>
+
+#include "Account.h"
+#include "Transaction.h"
+
+class MockAccount: public Account {
+public:
+  MockAccount(int id, int balance): Account(id, balance){}
+};
+
+class MockTransaction : public Transaction {
+public:
+  MockTransaction() : Transaction(){}
+};
+
+TEST(Transaction, Init) {
+  MockTransaction tr;
+  EXPECT_EQ(tr.Transaction::fee(), 1);
+}
+
+TEST(Transaction, Make) {
+  MockTransaction tr;
+  Account ac_from(1, 1000);
+  Account ac_to(2, 1000);
+  
+  tr.Transaction::set_fee(10);
+  EXPECT_EQ(tr.Transaction::fee(), 10);
+  
+  tr.Transaction::set_fee(1);
+  
+  EXPECT_THROW(tr.Transaction::Make(ac_from, ac_from, 150), std::logic_error);
+  EXPECT_THROW(tr.Transaction::Make(ac_from, ac_to, -50), std::invalid_argument);
+  EXPECT_THROW(tr.Transaction::Make(ac_from, ac_to, 50), std::logic_error);
+  
+  tr.Transaction::set_fee(60);
+  EXPECT_EQ(tr.Transaction::Make(ac_from, ac_to, 118), false);
+  tr.Transaction::set_fee(1);
+  ac_from.Account::Lock();
+  EXPECT_THROW(tr.Transaction::Make(ac_from, ac_to, 150), std::runtime_error);
+  ac_from.Account::ChangeBalance(-900);
+  ac_from.Account::Unlock();
+  EXPECT_EQ(tr.Transaction::Make(ac_from, ac_to, 150), false);
+  EXPECT_EQ(ac_from.Account::GetBalance(), 100);
+  EXPECT_EQ(ac_to.Account::GetBalance(), 1000);
+  ac_from.Account::Lock();
+  ac_from.Account::ChangeBalance(900);
+  ac_from.Account::Unlock();
+  EXPECT_EQ(tr.Transaction::Make(ac_from, ac_to, 150), true);
+  EXPECT_EQ(ac_from.Account::GetBalance(), 1000 - tr.Transaction::fee() - 150);
+  EXPECT_EQ(ac_to.Account::GetBalance(), 1150);
+}
+ ```
+ - `CMakeLists.txt`
+ 
+ ```sh
 cmake_minimum_required(VERSION 3.4)
-project(solver)
+project(Test_banking)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../formatter_ex_lib formatter_ex_lib_dir)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../solver_lib solver_lib_dir)
-add_executable(solver ${CMAKE_CURRENT_SOURCE_DIR}/equation.cpp)
-target_include_directories(solver PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../formatter_ex_lib ${CMAKE_CURRENT_SOURCE_DIR}/../solver_lib)
-target_link_libraries(solver formatter_ex_lib solver_lib)
-EOF
-```
+
+option(BUILD_TESTS "Build tests" OFF)
+
+if(BUILD_TESTS)
+  add_compile_options(--coverage)
+endif()
+
+add_library(banking STATIC ${CMAKE_CURRENT_SOURCE_DIR}/banking/Transaction.cpp ${CMAKE_CURRENT_SOURCE_DIR}/banking/Account.cpp)
+target_include_directories(banking PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/banking)
+target_link_libraries(banking gcov)
+
+if(BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(third-party/gtest)
+  file(GLOB BANKING_TEST_SOURCES tests/*.cpp)
+  add_executable(check ${BANKING_TEST_SOURCES})
+  target_link_libraries(check banking gtest_main gmock_main)
+  add_test(NAME check COMMAND check)
+endif()
+ ```
+
+
+2. Настройте сборочную процедуру на **Github Actions**.
+
+- `.github/workflows/CI.yml`
 
 ```sh
-$ cmake -B build
+$ mkdir .github && cd .github
+$ mkdir workflows && cd workflows
+$ touch CI.yml
 ```
 
-```sh
-$ cmake --build build
-```
+- Файл `CI.yml`:
 
 ```sh
-$ build/solver
-1
-1
--2
--------------------------
-x1 = -2.00000
--------------------------
--------------------------
-x2 = 1.00000
--------------------------
+name: CMake
+
+on:
+ push:
+  branches: [main]
+ pull_request:
+  branches: [main]
+
+jobs: 
+ build_Linux:
+
+  runs-on: ubuntu-latest
+
+  steps:
+  - uses: actions/checkout@v3
+
+  - name: Adding gtest
+    run: git clone https://github.com/google/googletest.git third-party/gtest -b release-1.11.0
+
+  - name: Install lcov
+    run: sudo apt-get install -y lcov
+
+  - name: Config banking with tests
+    run: cmake -H. -B ${{github.workspace}}/build -DBUILD_TESTS=ON
+
+  - name: Build banking
+    run: cmake --build ${{github.workspace}}/build
+
+  - name: Run tests
+    run: build/check
+    
+  - name: Do lcov stuff
+    run: lcov --directory . --capture --output-file coverage.info
+    
+  - name: Lcov remove
+    run: lcov --remove coverage.info '/usr/*' --output-file coverage.info
+    
+  - name: Lcov remove 2
+    run: lcov --remove coverage.info '${{github.workspace}}/third-party/gtest/*' --output-file coverage.info
+    
+  - name: Lcov list
+    run: lcov --list coverage.info
+
+  - name: Coveralls
+    uses: coverallsapp/github-action@master
+    with:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+      path-to-lcov: ${{ github.workspace }}/coverage.info
 ```
+
+3. Настройте [Coveralls.io](https://coveralls.io/).
+
+
+
+## Links
+
+- [C++ CI: Travis, CMake, GTest, Coveralls & Appveyor](http://david-grs.github.io/cpp-clang-travis-cmake-gtest-coveralls-appveyor/)
+- [Boost.Tests](http://www.boost.org/doc/libs/1_63_0/libs/test/doc/html/)
+- [Catch](https://github.com/catchorg/Catch2)
 
 ```
 Copyright (c) 2015-2021 The ISC Authors

@@ -1,3 +1,0 @@
-/home/vboxuser/Desktop/aakx000/workspace/labs/lab03/formatter_lib/build/CMakeFiles/formatter_lib.dir
-/home/vboxuser/Desktop/aakx000/workspace/labs/lab03/formatter_lib/build/CMakeFiles/edit_cache.dir
-/home/vboxuser/Desktop/aakx000/workspace/labs/lab03/formatter_lib/build/CMakeFiles/rebuild_cache.dir
